@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>哆啦A夢數學大冒險</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* 引入可愛的圓體字型 */
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap');
+        /* 引入等寬字體，用於數學題目的數字對齊 */
+        @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@700&display=swap');
+        
+        /* 定義哆啦A夢主題色變數 */
+        :root {
+            --dora-blue: #00AEEF;
+            --dora-red: #EE4035;
+            --dora-yellow: #FAEC32;
+            --dora-white: #FFFFFF;
+            --dora-dark-blue: #008CBF;
+        }
+
+        /* 修正：設定固定高度 h-[100dvh] 並隱藏溢出內容 (overflow-hidden) */
+        body {
+            font-family: 'Fredoka', sans-serif;
+            touch-action: manipulation;
+            user-select: none;
+            overscroll-behavior: none;
+            background: linear-gradient(135deg, #E0F7FF 0%, #B3E5FC 100%);
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(0, 174, 239, 0.1) 0%, transparent 20%),
+                radial-gradient(circle at 90% 80%, rgba(250, 236, 50, 0.2) 0%, transparent 20%);
+            background-attachment: fixed;
+        }
+        
+        /* === 題目對齊樣式 (加大至 8rem) === */
+        .math-column {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            font-size: 8rem; 
+            line-height: 1.1;
+            font-weight: 700;
+            color: var(--dora-blue);
+            width: 400px; 
+            max-width: 100%;
+            margin: 0 auto;
+            text-shadow: 3px 3px 0px rgba(255,255,255,0.8);
+        }
+
+        .digit-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr); 
+            width: 100%;
+            text-align: right;
+            padding-right: 5px;
+        }
+        
+        .operator-row {
+            display: grid;
+            grid-template-columns: 1fr repeat(3, 1fr); 
+            width: 100%;
+            padding-right: 5px;
+        }
+        
+        .operator-sign {
+            color: var(--dora-red);
+            text-align: left; 
+            padding-left: 5px;
+            font-size: 8rem;
+        }
+        
+        #num-top-container, #num-bottom-container {
+            grid-column: 2 / span 3;
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .math-digit {
+            font-family: 'Roboto Mono', monospace;
+            width: 1em; 
+            text-align: center;
+        }
+
+        .answer-line {
+            width: 100%;
+            height: 6px; 
+            background-color: var(--dora-blue);
+            margin: 2px 0;
+            border-radius: 3px;
+        }
+
+        /* 答案框容器 */
+        #answer-input-container {
+            display: flex;
+            justify-content: flex-end;
+            width: 100%;
+            padding-right: 5px;
+            margin-top: 2px;
+            min-height: 4rem; /* 增加最小高度 */
+            color: var(--dora-red);
+        }
+
+        /* 答案空格樣式 (加大) */
+        .answer-digit-box {
+            width: 1.1em; 
+            height: 1.3em;
+            background-color: var(--dora-white);
+            border: 6px solid var(--dora-blue); 
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 5rem; /* 加大字體 */
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.1s;
+            font-family: 'Roboto Mono', monospace;
+            /* 修正間距：只靠 JS 處理 margin-left: 0.1em; */
+        }
+        
+        /* 突出顯示選中的答案空格 */
+        .answer-digit-box.active {
+            border-color: var(--dora-yellow);
+            box-shadow: 0 0 10px var(--dora-yellow);
+        }
+        
+        /* === 進位框樣式 (加大) === */
+        #carry-input-container {
+            display: flex;
+            justify-content: flex-end;
+            width: 100%;
+            height: 4rem; /* 增加高度 */
+            padding-right: 5px;
+        }
+
+        .carry-box {
+            width: 1.1em; /* 匹配答案框寬度 */
+            height: 1.1em; /* 增加高度 */
+            background-color: #FFCDD2;
+            border: 4px solid var(--dora-red);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem; /* 加大字體 */
+            font-weight: 700;
+            cursor: pointer;
+            color: var(--dora-red);
+            font-family: 'Roboto Mono', monospace;
+            align-self: flex-start;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s;
+            /* 修正間距：只靠 JS 處理 margin-left: 0.1em; */
+        }
+        .carry-box.active {
+            border-color: var(--dora-yellow);
+            box-shadow: 0 0 10px var(--dora-yellow);
+        }
+        .carry-box.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* === 按鈕樣式 === */
+        .bubble-btn {
+            transition: all 0.1s ease;
+            border-bottom-width: 4px;
+        }
+        .bubble-btn:active {
+            transform: translateY(2px);
+            border-bottom-width: 1px;
+            box-shadow: none !important;
+        }
+        
+        .key-style {
+            background-color: var(--dora-white);
+            color: var(--dora-blue);
+            border: 3px solid var(--dora-blue);
+            box-shadow: 0 4px 0 #B3E5FC;
+            border-radius: 12px; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            height: 100%;
+        }
+
+        .num-key-large {
+            font-size: 4.5rem; 
+            padding: 10px 0; 
+        }
+
+        .btn-dora-yellow {
+            background-color: var(--dora-yellow);
+            color: #A85F00;
+            border-color: #EBCB00;
+            box-shadow: 0 4px 0 #EBCB00;
+            text-shadow: 1px 1px 0px rgba(255,255,255,0.5);
+        }
+        .btn-dora-yellow:hover { background-color: #FFF176; }
+        
+        /* R4 控制按鈕 */
+        .control-key-r4 {
+            font-size: 1.75rem; 
+            padding: 8px 0;
+        }
+        
+    </style>
+</head>
+<!-- 修正 body class: 使用 h-[100dvh] 確保固定高度，並加入 overflow-hidden 禁用滾動 -->
+<body class="h-[100dvh] flex flex-col items-center overflow-hidden">
+
+    <div id="menu-screen" class="w-full max-w-md p-6 text-center transition-all duration-300">
+        <div class="mb-10 relative">
+            <h1 class="text-5xl font-bold text-[--dora-blue] drop-shadow-[0_3px_0_#fff]">
+                <i class="fas fa-bell text-[--dora-yellow] drop-shadow-[0_2px_0_#A85F00] animate-bounce"></i> 
+                數學大冒險
+            </h1>
+            <p class="text-[--dora-blue] mt-4 text-xl font-bold">和哆啦A夢一起練習直式加法！</p>
+        </div>
+        
+        <div class="space-y-6 px-4">
+            <button onclick="startGame(1)" class="w-full btn-dora-blue bubble-btn text-3xl py-5 rounded-full font-bold relative overflow-hidden group">
+                <span class="relative z-10">1 位數 + 1 位數</span>
+                <i class="fas fa-rocket absolute right-6 top-1/2 -translate-y-1/2 opacity-50 group-hover:opacity-100 transition-opacity"></i>
+            </button>
+            <button onclick="startGame(2)" class="w-full btn-dora-blue bubble-btn text-3xl py-5 rounded-full font-bold relative overflow-hidden group">
+                <span class="relative z-10">1 位數 + 2 位數</span>
+                <i class="fas fa-star absolute right-6 top-1/2 -translate-y-1/2 opacity-50 group-hover:opacity-100 transition-opacity"></i>
+            </button>
+            <button onclick="startGame(3)" class="w-full btn-dora-blue bubble-btn text-3xl py-5 rounded-full font-bold relative overflow-hidden group">
+                <span class="relative z-10">2 位數 + 2 位數</span>
+                <i class="fas fa-crown absolute right-6 top-1/2 -translate-y-1/2 opacity-50 group-hover:opacity-100 transition-opacity"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- 遊戲畫面 -->
+    <div id="game-screen" class="hidden w-full p-2 flex-col h-full justify-between">
+        
+        <!-- 頂部資訊欄 (最小間距) -->
+        <div class="flex justify-between items-center px-2 max-w-7xl mx-auto w-full pt-1 pb-1">
+            <button onclick="backToMenu()" class="text-[--dora-blue] bg-white hover:bg-blue-50 text-xl w-10 h-10 rounded-full shadow-[0_4px_0_#B3E5FC] border-2 border-[--dora-blue] bubble-btn flex items-center justify-center">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <div class="flex items-center bg-[--dora-yellow] px-3 py-1 rounded-full shadow-[0_4px_0_#EBCB00] border-2 border-[#EBCB00]">
+                <i class="fas fa-bell text-[#A85F00] mr-1 text-base"></i>
+                <span class="text-base font-bold text-[#A85F00]">得分: <span id="score">0</span></span>
+            </div>
+        </div>
+
+        <!-- 主遊戲內容區塊 (flex-grow 佔據剩餘空間) -->
+        <div class="flex-grow flex flex-col sm:flex-row items-stretch justify-center gap-1 w-full max-w-7xl mx-auto">
+            
+            <!-- 左側：數字鍵盤 (3x4 grid) -->
+            <div class="w-full sm:w-[35%] p-1 grid grid-cols-3 gap-1">
+                <!-- 數字 7-9 -->
+                <button onclick="inputNum(7)" class="key-style num-key-large bubble-btn">7</button>
+                <button onclick="inputNum(8)" class="key-style num-key-large bubble-btn">8</button>
+                <button onclick="inputNum(9)" class="key-style num-key-large bubble-btn">9</button>
+                <!-- 數字 4-6 -->
+                <button onclick="inputNum(4)" class="key-style num-key-large bubble-btn">4</button>
+                <button onclick="inputNum(5)" class="key-style num-key-large bubble-btn">5</button>
+                <button onclick="inputNum(6)" class="key-style num-key-large bubble-btn">6</button>
+                <!-- 數字 1-3 -->
+                <button onclick="inputNum(1)" class="key-style num-key-large bubble-btn">1</button>
+                <button onclick="inputNum(2)" class="key-style num-key-large bubble-btn">2</button>
+                <button onclick="inputNum(3)" class="key-style num-key-large bubble-btn">3</button>
+                
+                <!-- R4: 清除 (1 col), 0 (1 col), 送出 (1 col) -->
+                <button onclick="clearInput(true)" class="key-style bubble-btn !bg-red-50 !text-[--dora-red] !border-[--dora-red] shadow-[0_4px_0_#FFCDD2] control-key-r4">
+                    <i class="fas fa-backspace"></i>
+                </button>
+                <button onclick="inputNum(0)" class="key-style num-key-large bubble-btn">0</button>
+                <button onclick="checkAnswer()" class="btn-dora-yellow bubble-btn shadow-[0_4px_0_#EBCB00] control-key-r4">
+                    <i class="fas fa-check"></i>
+                </button>
+            </div>
+
+            <!-- 右側：題目卡片 -->
+            <div class="w-full sm:w-[65%] flex items-center justify-center bg-white rounded-[40px] shadow-[0_8px_0_#B3E5FC] border-4 border-[--dora-blue] relative" id="problem-card"> 
+                
+                <div class="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none" style="background-image: radial-gradient(var(--dora-blue) 2px, transparent 2px); background-size: 20px 20px;"></div>
+
+                <div id="feedback-overlay" class="absolute inset-0 flex items-center justify-center bg-white bg-opacity-90 hidden z-20 rounded-[36px]"></div>
+
+                <div class="math-column relative z-10 py-1">
+                    <!-- 進位框容器 -->
+                    <div id="carry-input-container">
+                        <!-- 進位框將由 JS 填充 -->
+                    </div>
+                    
+                    <!-- 數字 1 -->
+                    <div id="num-top-container" class="digit-row">
+                        <!-- 數字內容將由 JS 填充 -->
+                    </div>
+                    
+                    <!-- 運算符號 + 數字 2 -->
+                    <div class="operator-row">
+                        <span class="operator-sign text-[8rem]">+</span> 
+                        <div id="num-bottom-container" style="grid-column: 2 / span 3; display: flex; justify-content: flex-end;">
+                             <!-- 數字內容將由 JS 填充 -->
+                        </div>
+                    </div>
+                    
+                    <div class="answer-line"></div>
+                    
+                    <!-- 答案輸入區塊 -->
+                    <div id="answer-input-container">
+                        <!-- 答案空格將由 JS 填充 -->
+                    </div>
+                </div>
+
+                <!-- 清除按鍵 (移動到框框下方) -->
+                <button onclick="clearInput(false)" class="key-style bubble-btn !bg-red-50 !text-[--dora-red] !border-[--dora-red] shadow-[0_4px_0_#FFCDD2] text-xl py-1.5 font-bold absolute bottom-2 right-2 w-16 h-10">
+                    <i class="fas fa-backspace"></i>
+                </button>
+
+            </div>
+        </div>
+
+        <!-- 底部：操作按鈕區塊 (已移除，功能已整合到左側鍵盤) -->
+        <div class="hidden"></div>
+    </div>
+
+    <audio id="sound-correct" src="https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3" preload="auto"></audio>
+    <audio id="sound-wrong" src="https://assets.mixkit.co/active_storage/sfx/2003/2003-preview.mp3" preload="auto"></audio>
+
+    <script>
+        // 遊戲狀態
+        let currentLevel = 0;
+        let score = 0;
+        let currentAnswer = 0;
+        let userInputArray = []; 
+        let carryInputArray = []; // 新增：進位數的使用者輸入
+        let expectedCarryArray = []; // 新增：正確的進位數
+        let maxDigits = 3; // 保持 3 位用於問題對齊
+        let activeBoxIndex = -1; // 當前答案框索引
+        let activeCarryIndex = -1; // 當前進位框索引 (0 或 1)
+        let isInputtingCarry = false; // 是否在輸入進位數
+        
+        // DOM 元素
+        const menuScreen = document.getElementById('menu-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const scoreDisplay = document.getElementById('score');
+        const numTopContainer = document.getElementById('num-top-container');
+        const numBottomContainer = document.getElementById('num-bottom-container');
+        const answerInputContainer = document.getElementById('answer-input-container');
+        const carryInputContainer = document.getElementById('carry-input-container'); // 新增
+        const feedbackOverlay = document.getElementById('feedback-overlay');
+        const soundCorrect = document.getElementById('sound-correct');
+        const soundWrong = document.getElementById('sound-wrong');
+
+        const imgCorrectUrl = "https://cdn-icons-png.flaticon.com/512/7518/7518748.png"; 
+        const imgWrongUrl = "https://cdn-icons-png.flaticon.com/512/7518/7518694.png";    
+
+        function getRandomInt(min, max) {
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        function startGame(level) {
+            currentLevel = level;
+            score = 0;
+            updateScore();
+            menuScreen.classList.add('hidden');
+            gameScreen.classList.remove('hidden');
+            gameScreen.classList.add('flex');
+            
+            try {
+                soundCorrect.load();
+                soundWrong.load();
+            } catch (e) {
+                console.log("Audio load failed:", e);
+            }
+
+            nextQuestion();
+        }
+
+        function backToMenu() {
+            gameScreen.classList.add('hidden');
+            gameScreen.classList.remove('flex');
+            menuScreen.classList.remove('hidden');
+            feedbackOverlay.classList.add('hidden');
+        }
+
+        function updateScore() {
+            scoreDisplay.textContent = score;
+        }
+
+        /**
+         * 格式化數字並填充到容器中，確保數字在三位空間內靠右對齊
+         * @param {number} num 要顯示的數字
+         * @param {HTMLElement} container 顯示數字的容器
+         */
+        function renderNumber(num, container) {
+            const numStr = String(num);
+            // 使用固定的 maxDigits (3) 進行填充，確保對齊
+            const paddedStr = numStr.padStart(maxDigits, ' '); 
+            
+            container.innerHTML = '';
+            for (const digit of paddedStr) {
+                const span = document.createElement('span');
+                span.className = 'math-digit';
+                span.textContent = digit === ' ' ? '\xa0' : digit; // 使用 &nbsp; 代替空格
+                container.appendChild(span);
+            }
+        }
+
+        /**
+         * 計算加法 A + B 的進位數
+         * 返回 [C0, C1] (進位到百位, 進位到十位)
+         */
+        function calculateCarries(num1, num2) {
+            const A = String(num1).padStart(maxDigits, '0').split('').map(Number);
+            const B = String(num2).padStart(maxDigits, '0').split('').map(Number);
+            
+            let carries = [0, 0, 0]; // C0 (into 100s), C1 (into 10s), C2 (into 1s, always 0)
+            
+            // 計算個位進位 C1 (進位到十位)
+            carries[1] = Math.floor((A[2] + B[2]) / 10);
+            
+            // 計算十位進位 C0 (進位到百位)
+            carries[0] = Math.floor((A[1] + B[1] + carries[1]) / 10);
+            
+            // 只需要 C0 和 C1 兩個進位框 (對應 100s 和 10s column)
+            return [carries[0], carries[1]];
+        }
+
+
+        function nextQuestion() {
+            let num1, num2;
+
+            if (currentLevel === 1) {
+                num1 = getRandomInt(1, 9);
+                num2 = getRandomInt(1, 9);
+            } else if (currentLevel === 2) {
+                const single = getRandomInt(1, 9);
+                const double = getRandomInt(10, 99);
+                if (Math.random() > 0.5) { num1 = double; num2 = single; } 
+                else { num1 = single; num2 = double; }
+            } else {
+                num1 = getRandomInt(10, 99);
+                num2 = getRandomInt(10, 99);
+            }
+
+            currentAnswer = num1 + num2;
+            
+            // --- 修正核心邏輯：動態設定答案框數量 ---
+            const answerSlots = String(currentAnswer).length;
+            
+            // 重新渲染題目數字，確保使用 maxDigits=3 進行精確對齊
+            renderNumber(num1, numTopContainer);
+            renderNumber(num2, numBottomContainer);
+
+            // 計算正確進位數 (C0, C1)
+            expectedCarryArray = calculateCarries(num1, num2); // [C0, C1]
+            
+            // 初始化輸入陣列
+            userInputArray = Array(answerSlots).fill(''); 
+            carryInputArray = Array(expectedCarryArray.length).fill('');
+
+            // 生成答案空格
+            generateAnswerBoxes();
+            generateCarryBoxes();
+            
+            // 預設選擇個位數 (答案框)
+            isInputtingCarry = false;
+            activeCarryIndex = -1;
+            activeBoxIndex = userInputArray.length - 1;
+            updateActiveStates();
+        }
+        
+        function generateCarryBoxes() {
+            carryInputContainer.innerHTML = '';
+            
+            const totalWidth = 3; // 總共 3 個數字位
+            
+            for (let i = 0; i < totalWidth; i++) {
+                const boxWrapper = document.createElement('div');
+                boxWrapper.style.width = '1.1em'; // 確保和下方的答案框寬度一致
+                boxWrapper.style.height = '100%';
+                boxWrapper.style.display = 'flex';
+                boxWrapper.style.justifyContent = 'center';
+                
+                // --- 對齊修正：只有 i>0 的元素需要 margin-left ---
+                if (i > 0) {
+                    boxWrapper.style.marginLeft = '0.1em';
+                }
+                
+                // 只有 i=0 (百位) 和 i=1 (十位) 需要進位框
+                if (i <= 1) { 
+                    const carryIndex = i; // C0 (i=0) or C1 (i=1)
+                    
+                    const carryBox = document.createElement('div');
+                    carryBox.className = 'carry-box';
+                    carryBox.dataset.index = carryIndex;
+                    carryBox.innerHTML = '<span>?</span>';
+                    carryBox.onclick = () => {
+                        isInputtingCarry = true;
+                        setActiveCarryBox(carryIndex);
+                    };
+                    
+                    // 只有當該位置需要進位 (C0 or C1 > 0) 時才顯示框框
+                    if (expectedCarryArray[carryIndex] > 0) {
+                        carryBox.classList.add('visible');
+                    }
+                    
+                    boxWrapper.appendChild(carryBox);
+                }
+                
+                carryInputContainer.appendChild(boxWrapper);
+            }
+        }
+
+
+        function generateAnswerBoxes() {
+            answerInputContainer.innerHTML = ''; 
+            
+            const displayLength = 3; 
+            const answerLength = userInputArray.length;
+            const padding = displayLength - answerLength;
+
+            // 1. 生成左側空白佔位
+            for (let i = 0; i < padding; i++) {
+                const box = document.createElement('div');
+                box.style.width = '1.1em';
+                // 對齊修正：只有第一個答案框之前需要 padding，但每個 box 都有 margin-left: 0.1em
+                // 為了對齊，這裡的 padding box 不應有 margin-left
+                if (i > 0) {
+                    box.style.marginLeft = '0.1em';
+                }
+                answerInputContainer.appendChild(box);
+            }
+            
+            // 2. 生成答案框
+            for (let i = 0; i < answerLength; i++) {
+                const box = document.createElement('div');
+                box.className = 'answer-digit-box placeholder';
+                box.dataset.index = i;
+                box.innerHTML = '<span>?</span>';
+                box.onclick = () => {
+                    isInputtingCarry = false;
+                    setActiveBox(i);
+                };
+                
+                // --- 對齊修正：只有第一個答案框不需要 margin-left，其餘都需要 ---
+                const indexInRow = padding + i;
+                if (indexInRow > 0) {
+                    box.style.marginLeft = '0.1em';
+                }
+
+                answerInputContainer.appendChild(box);
+            }
+        }
+        
+        function updateActiveStates() {
+            const answerBoxes = answerInputContainer.querySelectorAll('.answer-digit-box');
+            const carryBoxes = carryInputContainer.querySelectorAll('.carry-box');
+
+            answerBoxes.forEach((box, index) => {
+                if (!isInputtingCarry && index === activeBoxIndex) {
+                    box.classList.add('active');
+                } else {
+                    box.classList.remove('active');
+                }
+            });
+
+            carryBoxes.forEach((box, index) => {
+                if (isInputtingCarry && index === activeCarryIndex) {
+                    box.classList.add('active');
+                } else {
+                    box.classList.remove('active');
+                }
+            });
+        }
+        
+        function updateDisplay() {
+            const answerBoxes = answerInputContainer.querySelectorAll('.answer-digit-box');
+            answerBoxes.forEach((box, index) => {
+                const digit = userInputArray[index];
+                const span = box.querySelector('span');
+                if (digit === '') {
+                    span.textContent = '?';
+                    box.classList.add('placeholder');
+                } else {
+                    span.textContent = digit;
+                    box.classList.remove('placeholder');
+                }
+            });
+            
+            const carryBoxes = carryInputContainer.querySelectorAll('.carry-box');
+            carryBoxes.forEach((box, index) => {
+                const digit = carryInputArray[index];
+                const span = box.querySelector('span');
+                if (span) { 
+                    span.textContent = digit === '' ? '?' : digit;
+                }
+            });
+        }
+
+        function setActiveBox(index) {
+            if (index >= 0 && index < userInputArray.length) {
+                activeBoxIndex = index;
+                activeCarryIndex = -1;
+                updateActiveStates();
+            }
+        }
+        
+        function setActiveCarryBox(index) {
+             // 確保只有需要顯示進位框的位置才能被選中
+            const carryBoxes = carryInputContainer.querySelectorAll('.carry-box');
+            if (index >= 0 && index < carryBoxes.length && carryBoxes[index].classList.contains('visible')) {
+                activeCarryIndex = index;
+                activeBoxIndex = -1;
+                updateActiveStates();
+            }
+        }
+
+        function inputNum(num) {
+            const numStr = String(num);
+            if (isInputtingCarry) {
+                if (activeCarryIndex !== -1 && numStr.length === 1 && (numStr === '0' || numStr === '1')) {
+                    carryInputArray[activeCarryIndex] = numStr;
+                    updateDisplay();
+                    
+                    // 輸入後自動跳到下一個需要填寫的進位框
+                    const nextIndex = getNextEmptyCarryIndex(activeCarryIndex + 1);
+                    if (nextIndex !== -1) {
+                        setActiveCarryBox(nextIndex);
+                    } else {
+                        // 如果所有進位框都填滿，切換到答案框的最高位
+                        isInputtingCarry = false;
+                        setActiveBox(0); 
+                    }
+                }
+            } else {
+                if (activeBoxIndex !== -1) {
+                    userInputArray[activeBoxIndex] = numStr;
+                    updateDisplay();
+                    
+                    const nextEmptyIndex = getNextEmptyAnswerIndex(activeBoxIndex + 1);
+                    
+                    if (nextEmptyIndex !== -1) {
+                        setActiveBox(nextEmptyIndex);
+                    } else {
+                        setActiveBox(userInputArray.length - 1);
+                    }
+                }
+            }
+        }
+
+        function getNextEmptyAnswerIndex(startIndex) {
+            for (let i = startIndex; i < userInputArray.length; i++) {
+                if (userInputArray[i] === '') {
+                    return i;
+                }
+            }
+            for (let i = 0; i < startIndex; i++) {
+                if (userInputArray[i] === '') {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
+        function getNextEmptyCarryIndex(startIndex) {
+            const carryBoxes = carryInputContainer.querySelectorAll('.carry-box');
+            for (let i = startIndex; i < expectedCarryArray.length; i++) {
+                if (carryBoxes[i] && carryBoxes[i].classList.contains('visible') && carryInputArray[i] === '') {
+                    return i;
+                }
+            }
+            for (let i = 0; i < startIndex; i++) {
+                if (carryBoxes[i] && carryBoxes[i].classList.contains('visible') && carryInputArray[i] === '') {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
+
+        function clearInput(isLeftButton) {
+            
+            if (isInputtingCarry && activeCarryIndex !== -1) {
+                if (carryInputArray[activeCarryIndex] !== '') {
+                    carryInputArray[activeCarryIndex] = '';
+                    updateDisplay();
+                } else if (activeCarryIndex > 0) {
+                    setActiveCarryBox(activeCarryIndex - 1);
+                    carryInputArray[activeCarryIndex] = '';
+                    updateDisplay();
+                }
+            } else if (activeBoxIndex !== -1) {
+                if (userInputArray[activeBoxIndex] !== '') {
+                    userInputArray[activeBoxIndex] = '';
+                    updateDisplay();
+                } else if (activeBoxIndex > 0) {
+                    setActiveBox(activeBoxIndex - 1);
+                    userInputArray[activeBoxIndex] = '';
+                    updateDisplay();
+                }
+            }
+            
+            if (isLeftButton === false) {
+                 isInputtingCarry = false;
+                 setActiveBox(userInputArray.length - 1);
+            }
+        }
+
+        function checkAnswer() {
+            if (userInputArray.includes('')) {
+                alert('請將所有答案空格填寫完整！');
+                return;
+            }
+            
+            const requiredCarryIndexes = expectedCarryArray.map((c, i) => c > 0 ? i : -1).filter(i => i !== -1);
+            let allCarriesFilled = true;
+            for (const i of requiredCarryIndexes) {
+                 if (carryInputArray[i] === '') {
+                    allCarriesFilled = false;
+                    break;
+                 }
+            }
+
+            if (!allCarriesFilled) {
+                alert('請將所有進位框填寫完整！');
+                return;
+            }
+
+            const userInt = Number(userInputArray.join('')); 
+            const correctInt = Number(currentAnswer); 
+            
+            let carriesCorrect = true;
+            for (let i = 0; i < expectedCarryArray.length; i++) {
+                 if (carryInputArray[i] !== '' && Number(carryInputArray[i]) !== expectedCarryArray[i]) {
+                    carriesCorrect = false;
+                    break;
+                 }
+            }
+
+            if (userInt === correctInt && carriesCorrect) {
+                showFeedback(true);
+                score += 10;
+                updateScore();
+                setTimeout(nextQuestion, 1200);
+            } else {
+                showFeedback(false);
+                
+                userInputArray = Array(userInputArray.length).fill(''); 
+                carryInputArray = Array(expectedCarryArray.length).fill('');
+                
+                updateDisplay();
+                isInputtingCarry = false;
+                setActiveBox(userInputArray.length - 1); 
+            }
+        }
+
+        function playSound(audioElement) {
+            try {
+                audioElement.pause();
+                audioElement.currentTime = 0;
+                audioElement.play();
+            } catch (e) {
+                console.log("Audio play failed (user gesture required):", e);
+            }
+        }
+
+        function showFeedback(isCorrect) {
+            
+            feedbackOverlay.classList.remove('hidden');
+            feedbackOverlay.innerHTML = '';
+
+            const feedbackWrapper = document.createElement('div');
+            feedbackWrapper.className = "flex flex-col items-center justify-center space-y-2";
+            
+            const feedbackImg = document.createElement('img');
+            feedbackImg.className = "w-40 h-40 drop-shadow-2xl";
+
+            if (isCorrect) {
+                feedbackOverlay.className = "absolute inset-0 flex items-center justify-center bg-[#E0F7FF] bg-opacity-95 z-20 rounded-[36px]";
+                feedbackImg.src = imgCorrectUrl;
+                feedbackImg.classList.add('animate-bounce');
+                
+                feedbackWrapper.appendChild(feedbackImg);
+                playSound(soundCorrect); 
+            } else {
+                feedbackOverlay.className = "absolute inset-0 flex items-center justify-center bg-[#FFEBEE] bg-opacity-95 z-20 rounded-[36px]";
+                feedbackImg.src = imgWrongUrl;
+                feedbackImg.classList.add('animate-pulse');
+                
+                const feedbackText = document.createElement('div');
+                feedbackText.className = "text-4xl font-extrabold text-[--dora-red] drop-shadow-[0_2px_0_#fff] animate-bounce";
+                feedbackText.textContent = "再試一次";
+
+                feedbackWrapper.appendChild(feedbackImg);
+                feedbackWrapper.appendChild(feedbackText);
+                
+                playSound(soundWrong);
+            }
+
+            feedbackOverlay.appendChild(feedbackWrapper);
+
+            setTimeout(() => {
+                feedbackOverlay.classList.add('hidden');
+                feedbackOverlay.innerHTML = '';
+            }, 1200);
+        }
+        
+        // 確保剛載入頁面時，gameScreen是隱藏的
+        if (gameScreen && gameScreen.classList.contains('flex')) {
+            gameScreen.classList.remove('flex');
+            gameScreen.classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
